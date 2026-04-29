@@ -1806,7 +1806,7 @@ namespace MissionPlanner.Controls
 
                 // Get current wanted tiles from tileArea
                 List<tileZoomArea> currentTileArea;
-                lock (tileArea)
+                lock (_tileAreaLock)
                 {
                     currentTileArea = tileArea.ToList();
                 }

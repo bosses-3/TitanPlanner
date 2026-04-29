@@ -33,6 +33,7 @@ namespace MissionPlanner.Controls
         private GMapProvider type;
         private PureProjection prj;
         private List<tileZoomArea> tileArea = new List<tileZoomArea>();
+        private readonly object _tileAreaLock = new object();
         private bool _forceRefreshTiles;
         private bool sizeChanged;
         private Thread _imageloaderThread;
@@ -166,7 +167,7 @@ namespace MissionPlanner.Controls
                 }
 
                 if (DateTime.Now.Second % 3 == 1 && tileArea != null)
-                    lock(tileArea)
+                    lock (_tileAreaLock)
                         CleanupOldTextures(tileArea);
 
                 if (core.tileLoadQueue.Count > 0)
@@ -197,7 +198,7 @@ namespace MissionPlanner.Controls
 
             var cameraPos = new utmpos(utmcenter[0] + cameraX, utmcenter[1] + cameraY, utmzone).ToLLA();
 
-            lock (tileArea)
+            lock (_tileAreaLock)
             {
                 tileArea = new List<tileZoomArea>();
 
@@ -263,7 +264,7 @@ namespace MissionPlanner.Controls
             var pxstep = 2;
 
             tileZoomArea[] talist;
-            lock (tileArea)
+            lock (_tileAreaLock)
                 talist = tileArea.ToArray();
             foreach (var tilearea in talist)
             {
