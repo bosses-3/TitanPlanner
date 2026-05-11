@@ -20,6 +20,9 @@ namespace MissionPlanner.Utilities
 
         private static Dictionary<string,XDocument> _parameterMetaDataXML = new Dictionary<string, XDocument>();
 
+        // Per-vehicle name -> XElement lookup so GetParameterMetaData doesn't re-walk the whole XML tree on every call
+        private static Dictionary<string, Dictionary<string, XElement>> _parameterIndex = new Dictionary<string, Dictionary<string, XElement>>();
+
         private static string[] vehicles = new[]
         {
              "SITL", "AP_Periph", "ArduSub", "Rover", "ArduCopter",
@@ -78,8 +81,12 @@ namespace MissionPlanner.Utilities
 
                     var veh = vehicles.First(b => b.Contains(a));
 
-                    if(_parameterMetaDataXML.ContainsKey(a + version.ToString()))
+                    if (_parameterMetaDataXML.ContainsKey(a + version.ToString()))
+                    {
                         _parameterMetaDataXML[veh] = _parameterMetaDataXML[a + version.ToString()];
+                        if (_parameterIndex.ContainsKey(a + version.ToString()))
+                            _parameterIndex[veh] = _parameterIndex[a + version.ToString()];
+                    }
                 }
                 catch (Exception ex) { log.Error(ex); }
             });
@@ -154,6 +161,7 @@ namespace MissionPlanner.Utilities
         public static void Reset()
         {
             _parameterMetaDataXML.Clear();
+            _parameterIndex.Clear();
         }
 
         public static void Reload(string vehicle = "")
@@ -165,7 +173,9 @@ namespace MissionPlanner.Utilities
             {
                 if (File.Exists(paramMetaDataXMLFileName))
                 {
-                    _parameterMetaDataXML[vehicle] = XDocument.Load(paramMetaDataXMLFileName);
+                    var doc = XDocument.Load(paramMetaDataXMLFileName);
+                    _parameterMetaDataXML[vehicle] = doc;
+                    _parameterIndex[vehicle] = BuildIndex(doc);
                 }
 
             }
@@ -185,6 +195,41 @@ namespace MissionPlanner.Utilities
                 log.Error(paramMetaDataXMLFileName);
                 log.Error(ex);
             }
+        }
+
+        // Build a flat name -> XElement index for the document so per-param lookups are O(1)
+        private static Dictionary<string, XElement> BuildIndex(XDocument doc)
+        {
+            var index = new Dictionary<string, XElement>(StringComparer.Ordinal);
+            try
+            {
+                var root = doc.Element("paramfile");
+                if (root == null)
+                    return index;
+
+                foreach (var paramfile in root.Elements())
+                {
+                    foreach (var parameters in paramfile.Elements())
+                    {
+                        if (!parameters.HasAttributes)
+                            continue;
+                        foreach (var param in parameters.Elements())
+                        {
+                            var name = param.Attribute("name")?.Value;
+                            if (string.IsNullOrEmpty(name))
+                                continue;
+                            // Preserve old "first match wins" behaviour
+                            if (!index.ContainsKey(name))
+                                index[name] = param;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                log.Error("BuildIndex error", ex);
+            }
+            return index;
         }
 
         /// <summary>
@@ -213,61 +258,51 @@ namespace MissionPlanner.Utilities
             if (metaKey == ParameterMetaDataConstants.User)
                 metaKey = "user";
 
-            if (_parameterMetaDataXML.ContainsKey(vechileType))
+            if (!_parameterIndex.TryGetValue(vechileType, out var index))
+                return string.Empty;
+
+            try
             {
-                try
+                var vechileKey = vechileType + ":" + nodeKey;
+                XElement param;
+                if (!index.TryGetValue(vechileKey, out param))
+                    if (!index.TryGetValue(nodeKey, out param))
+                        return string.Empty;
+
+                var attr = param.Attribute(metaKey);
+                if (attr != null)
+                    return attr.Value;
+
+                if (metaKey == ParameterMetaDataConstants.Values)
                 {
-                    var vechileKey = vechileType + ":" + nodeKey;
-                    foreach (var paramfile in _parameterMetaDataXML[vechileType].Element("paramfile").Elements())
+                    var ans = "";
+                    param.Elements("values").Elements().ForEach(a =>
                     {
-                        foreach (var parameters in paramfile.Elements())
+                        if (a.Name == "value")
                         {
-                            if (parameters.HasAttributes)
-                            {
-                                foreach (var param in parameters.Elements())
-                                {
-                                    if (param.Attribute("name").Value == vechileKey ||
-                                        param.Attribute("name").Value == nodeKey)
-                                    {
-                                        if (param.Attribute(metaKey) != null)
-                                        {
-                                            return param.Attribute(metaKey).Value;
-                                        }
-                                        if (metaKey == ParameterMetaDataConstants.Values)
-                                        {
-                                            var ans = "";
-                                            param.Elements("values").Elements().ForEach(a =>
-                                            {
-                                                if (a.Name == "value")
-                                                {
-                                                    var code = a.Attribute("code");
-                                                    var value = a.Value.ToString();
-                                                    ans += String.Format("{0}:{1},", code.Value, value);
-                                                }
-                                            });
-                                            return ans;
-                                        }
-                                        foreach (var xElement in param.Elements())
-                                        {
-                                            if (xElement.Name == "field")
-                                            {
-                                                var name = xElement.Attribute("name");
-                                                if (name != null && name.Value == metaKey)
-                                                {
-                                                    return xElement.Value;
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            var code = a.Attribute("code");
+                            var value = a.Value.ToString();
+                            ans += String.Format("{0}:{1},", code.Value, value);
+                        }
+                    });
+                    return ans;
+                }
+
+                foreach (var xElement in param.Elements())
+                {
+                    if (xElement.Name == "field")
+                    {
+                        var name = xElement.Attribute("name");
+                        if (name != null && name.Value == metaKey)
+                        {
+                            return xElement.Value;
                         }
                     }
                 }
-                catch (Exception ex)
-                {
-                    log.Error(ex);
-                } 
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex);
             }
 
             return string.Empty;

@@ -44,9 +44,19 @@ namespace MissionPlanner.GCSViews.ConfigurationView
         // Allow override of initial tree collapsed state (used by MainV2 instances)
         public bool? InitialTreeCollapsed { get; set; } = null;
 
+        // Track which params have already had their metadata cells populated.
+        // Static to match rowlist's lifetime — cleared when rowlist is rebuilt.
+        private static readonly HashSet<string> _metadataLoaded = new HashSet<string>(StringComparer.Ordinal);
+
+        // Debounce: collapses rapid scroll/sort/filter into one load pass.
+        private readonly System.Timers.Timer _metadataLoadTimer =
+            new System.Timers.Timer { Interval = 50, AutoReset = false };
+
         public ConfigRawParams()
         {
             InitializeComponent();
+            _metadataLoadTimer.Elapsed += MetadataLoadTimerOnElapsed;
+            Params.Sorted += (s, e) => ScheduleVisibleMetadataLoad();
         }
 
         public void Activate()
@@ -544,10 +554,10 @@ namespace MissionPlanner.GCSViews.ConfigurationView
                     list.Add(item);
 
                 rowlist.Clear();
+                _metadataLoaded.Clear();
 
                 bool has_defaults = false;
                 var fav_params = Settings.Instance.GetList("fav_params");
-                var firmware = MainV2.comPort.MAV.cs.firmware.ToString();
 
                 // Create rows with minimal data first (fast)
                 foreach (var value in list)
@@ -580,9 +590,6 @@ namespace MissionPlanner.GCSViews.ConfigurationView
 
                 Default_value.Visible = has_defaults;
                 chk_none_default.Visible = has_defaults;
-
-                // Load metadata in background after grid is displayed
-                Task.Run(() => LoadMetadataAsync(firmware));
             }
             //update values in rowlist
             if (!startup)
@@ -618,65 +625,134 @@ namespace MissionPlanner.GCSViews.ConfigurationView
                 BuildTree();
             }
 
+            ScheduleVisibleMetadataLoad();
+
             log.Info("Done");
         }
 
-        private void LoadMetadataAsync(string firmware)
+        // Debounced kick: collapses rapid scroll/sort/filter into one pass.
+        private void ScheduleVisibleMetadataLoad()
         {
             try
             {
-                foreach (DataGridViewRow row in rowlist.ToArray())
+                _metadataLoadTimer.Stop();
+                _metadataLoadTimer.Start();
+            }
+            catch { }
+        }
+
+        private void MetadataLoadTimerOnElapsed(object sender, ElapsedEventArgs e)
+        {
+            try
+            {
+                if (Params == null || Params.IsDisposed || !Params.IsHandleCreated)
+                    return;
+                Params.BeginInvoke((Action)LoadVisibleMetadataNow);
+            }
+            catch { }
+        }
+
+        // Runs on UI thread. Picks visible rows (+ buffer) whose metadata hasn't been
+        // loaded, marks them loaded, and hands off the actual XML lookup + cell update
+        // to a background task.
+        private void LoadVisibleMetadataNow()
+        {
+            if (Params == null || Params.IsDisposed || Params.Rows.Count == 0)
+                return;
+
+            string firmware;
+            try { firmware = MainV2.comPort.MAV.cs.firmware.ToString(); }
+            catch { return; }
+
+            int firstVisible = Params.FirstDisplayedScrollingRowIndex;
+            if (firstVisible < 0) firstVisible = 0;
+            int displayedCount = Math.Max(1, Params.DisplayedRowCount(true));
+            const int buffer = 30;
+            int total = Params.Rows.Count;
+            int start = Math.Max(0, firstVisible - buffer);
+            int end = Math.Min(total, firstVisible + displayedCount + buffer);
+
+            var rowsToLoad = new List<KeyValuePair<DataGridViewRow, string>>();
+            for (int i = start; i < end; i++)
+            {
+                var row = Params.Rows[i];
+                if (!row.Visible) continue;
+                var name = row.Cells[Command.Index].Value?.ToString();
+                if (string.IsNullOrEmpty(name)) continue;
+                if (_metadataLoaded.Contains(name)) continue;
+                _metadataLoaded.Add(name);
+                rowsToLoad.Add(new KeyValuePair<DataGridViewRow, string>(row, name));
+            }
+
+            if (rowsToLoad.Count == 0) return;
+
+            Task.Run(() => LoadMetadataAndUpdateCells(rowsToLoad, firmware));
+        }
+
+        private void LoadMetadataAndUpdateCells(
+            List<KeyValuePair<DataGridViewRow, string>> rowsToLoad, string firmware)
+        {
+            // Build the cell-update closures off the UI thread, then apply in one batch.
+            var updates = new List<Action>(rowsToLoad.Count);
+            foreach (var kvp in rowsToLoad)
+            {
+                var row = kvp.Key;
+                var name = kvp.Value;
+                try
                 {
-                    try
-                    {
-                        var value = row.Cells[Command.Index].Value?.ToString();
-                        if (string.IsNullOrEmpty(value))
-                            continue;
+                    var desc = ParameterMetaDataRepository.GetParameterMetaData(name,
+                        ParameterMetaDataConstants.Description, firmware);
+                    if (string.IsNullOrEmpty(desc)) continue;
+                    var range = ParameterMetaDataRepository.GetParameterMetaData(name,
+                        ParameterMetaDataConstants.Range, firmware);
+                    var options = ParameterMetaDataRepository.GetParameterMetaData(name,
+                        ParameterMetaDataConstants.Values, firmware);
+                    var units = ParameterMetaDataRepository.GetParameterMetaData(name,
+                        ParameterMetaDataConstants.Units, firmware);
 
-                        var metaDataDescription = ParameterMetaDataRepository.GetParameterMetaData(value,
-                            ParameterMetaDataConstants.Description, firmware);
-                        if (!string.IsNullOrEmpty(metaDataDescription))
+                    var capturedRow = row;
+                    var capturedDesc = desc;
+                    var capturedRange = range;
+                    var capturedOptions = options;
+                    var capturedUnits = units;
+                    updates.Add(() =>
+                    {
+                        try
                         {
-                            var range = ParameterMetaDataRepository.GetParameterMetaData(value,
-                                ParameterMetaDataConstants.Range, firmware);
-                            var options = ParameterMetaDataRepository.GetParameterMetaData(value,
-                                ParameterMetaDataConstants.Values, firmware);
-                            var units = ParameterMetaDataRepository.GetParameterMetaData(value,
-                                ParameterMetaDataConstants.Units, firmware);
-
-                            // Update cells on UI thread
-                            if (Params.IsHandleCreated && !Params.IsDisposed)
-                            {
-                                Params.BeginInvoke((Action)(() =>
-                                {
-                                    try
-                                    {
-                                        if (row.Index >= 0)
-                                        {
-                                            row.Cells[Command.Index].ToolTipText = AddNewLinesForTooltip(metaDataDescription);
-                                            row.Cells[Value.Index].ToolTipText = AddNewLinesForTooltip(metaDataDescription);
-                                            row.Cells[Units.Index].Value = units;
-                                            row.Cells[Options.Index].Value = (range + "\n" + options.Replace(",", "\n")).Trim();
-                                            if (options.Length > 0) row.Cells[Options.Index].ToolTipText = options.Replace(',', '\n');
-                                            row.Cells[Desc.Index].Value = metaDataDescription;
-                                            row.Cells[Desc.Index].ToolTipText = AddNewLinesForTooltip(metaDataDescription);
-                                        }
-                                    }
-                                    catch { }
-                                }));
-                            }
+                            if (capturedRow.Index < 0) return;
+                            var tip = AddNewLinesForTooltip(capturedDesc);
+                            capturedRow.Cells[Command.Index].ToolTipText = tip;
+                            capturedRow.Cells[Value.Index].ToolTipText = tip;
+                            capturedRow.Cells[Units.Index].Value = capturedUnits;
+                            capturedRow.Cells[Options.Index].Value =
+                                (capturedRange + "\n" + capturedOptions.Replace(",", "\n")).Trim();
+                            if (capturedOptions.Length > 0)
+                                capturedRow.Cells[Options.Index].ToolTipText = capturedOptions.Replace(',', '\n');
+                            capturedRow.Cells[Desc.Index].Value = capturedDesc;
+                            capturedRow.Cells[Desc.Index].ToolTipText = tip;
                         }
-                    }
-                    catch (Exception ex)
-                    {
-                        log.Error(ex);
-                    }
+                        catch { }
+                    });
+                }
+                catch (Exception ex)
+                {
+                    log.Error(ex);
                 }
             }
-            catch (Exception ex)
+
+            if (updates.Count == 0) return;
+
+            try
             {
-                log.Error("LoadMetadataAsync error", ex);
+                if (Params.IsHandleCreated && !Params.IsDisposed)
+                {
+                    Params.BeginInvoke((Action)(() =>
+                    {
+                        foreach (var u in updates) u();
+                    }));
+                }
             }
+            catch { }
         }
 
         private void BuildTree()
@@ -952,6 +1028,7 @@ namespace MissionPlanner.GCSViews.ConfigurationView
            {
                filterList(txt_search.Text);
                optionsControlUpateBounds();
+               ScheduleVisibleMetadataLoad();
            });
         }
 
@@ -1286,6 +1363,7 @@ namespace MissionPlanner.GCSViews.ConfigurationView
         private void Params_Scroll(object sender, ScrollEventArgs e)
         {
             optionsControlUpateBounds();
+            ScheduleVisibleMetadataLoad();
         }
 
         private void Params_RowHeightChanged(object sender, DataGridViewRowEventArgs e)
