@@ -6331,7 +6331,7 @@ namespace MissionPlanner.GCSViews
         {
             qv.Tag = def.Field;
             qv.desc = !string.IsNullOrWhiteSpace(def.Label) ? def.Label : MainV2.comPort.MAV.cs.GetNameandUnit(def.Field);
-            qv.numberformat = "0.00";
+            qv.numberformat = !string.IsNullOrWhiteSpace(def.Format) ? def.Format : "0.00";
             if (def.Color != null)
             {
                 qv.numberColor = def.Color.Value;
@@ -6349,6 +6349,7 @@ namespace MissionPlanner.GCSViews
             public Color? Color { get; set; }
             public string Label { get; set; }
             public double Scale { get; set; } = 1;
+            public string Format { get; set; } = "0.00";
         }
 
         private QuickViewDefault[,] LoadQuickViewDefaultsFromCSV()
@@ -6410,6 +6411,9 @@ namespace MissionPlanner.GCSViews
 
                                 if (parts.Length > 3 && double.TryParse(parts[3].Trim(), out double scale))
                                     def.Scale = scale;
+
+                                if (parts.Length > 4 && !string.IsNullOrWhiteSpace(parts[4]))
+                                    def.Format = parts[4].Trim();
 
                                 defaults[row, col] = def;
                             }

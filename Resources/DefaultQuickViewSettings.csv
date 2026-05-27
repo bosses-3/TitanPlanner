@@ -1,5 +1,6 @@
-# Default Dashboard Layout - Each cell format: field|color|label|scale (color/label/scale are optional),,,,
+# Default Dashboard Layout - Each cell format: field|color|label|scale|format (all but field are optional),,,,
+# Leave optional positions empty to skip them (e.g. field||||0 sets just format).,,,,
 # Rows and columns in this file determine dashboard layout,,,,
-battery_voltage|#ffff80,current|#ff8080,watts,battery_usedmah,battery_mahperkm
-airspeed|#ff80ff,groundspeed|#408080,verticalspeed|#ffff80,alt|#0080c0,yaw|#8080c0
-timeInAirMinSec,distTraveled,DistToHome,wp_dist,rxrssi
+battery_voltage|#ffff80,current|#ff8080,watts|#ff8080|||0,battery_usedmah||||0,battery_mahperkm
+airspeed|#ff80ff,groundspeed|#408080,verticalspeed|#ffff80,alt|#0080c0|||0,yaw|#8080c0|||0
+timeInAirMinSec,distTraveled||||0,DistToHome||||0,wp_dist||||0,rxrssi||||0
