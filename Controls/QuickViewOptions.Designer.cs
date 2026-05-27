@@ -51,6 +51,13 @@ namespace MissionPlanner.Controls
             this.label4 = new System.Windows.Forms.Label();
             this.TXT_gaugeMin = new System.Windows.Forms.TextBox();
             this.TXT_gaugeMax = new System.Windows.Forms.TextBox();
+            this.CHK_colorCode = new System.Windows.Forms.CheckBox();
+            this.LBL_redValue = new System.Windows.Forms.Label();
+            this.LBL_yellowValue = new System.Windows.Forms.Label();
+            this.LBL_greenValue = new System.Windows.Forms.Label();
+            this.TXT_redValue = new System.Windows.Forms.TextBox();
+            this.TXT_yellowValue = new System.Windows.Forms.TextBox();
+            this.TXT_greenValue = new System.Windows.Forms.TextBox();
             this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
             ((System.ComponentModel.ISupportInitialize)(this.NUM_precision)).BeginInit();
             this.groupBox1.SuspendLayout();
@@ -144,7 +151,7 @@ namespace MissionPlanner.Controls
             this.groupBox1.Controls.Add(this.tableLayoutPanel1);
             this.groupBox1.Location = new System.Drawing.Point(12, 39);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(257, 300);
+            this.groupBox1.Size = new System.Drawing.Size(257, 420);
             this.groupBox1.TabIndex = 8;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Advanced";
@@ -171,10 +178,22 @@ namespace MissionPlanner.Controls
             this.tableLayoutPanel1.Controls.Add(this.TXT_gaugeMin, 1, 6);
             this.tableLayoutPanel1.Controls.Add(this.label4, 0, 7);
             this.tableLayoutPanel1.Controls.Add(this.TXT_gaugeMax, 1, 7);
+            this.tableLayoutPanel1.Controls.Add(this.CHK_colorCode, 0, 8);
+            this.tableLayoutPanel1.Controls.Add(this.LBL_redValue, 0, 9);
+            this.tableLayoutPanel1.Controls.Add(this.TXT_redValue, 1, 9);
+            this.tableLayoutPanel1.Controls.Add(this.LBL_yellowValue, 0, 10);
+            this.tableLayoutPanel1.Controls.Add(this.TXT_yellowValue, 1, 10);
+            this.tableLayoutPanel1.Controls.Add(this.LBL_greenValue, 0, 11);
+            this.tableLayoutPanel1.Controls.Add(this.TXT_greenValue, 1, 11);
             this.tableLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tableLayoutPanel1.Location = new System.Drawing.Point(3, 16);
             this.tableLayoutPanel1.Name = "tableLayoutPanel1";
-            this.tableLayoutPanel1.RowCount = 8;
+            this.tableLayoutPanel1.RowCount = 12;
+            this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30F));
+            this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30F));
+            this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30F));
+            this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30F));
+            this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30F));
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30F));
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30F));
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30F));
@@ -183,7 +202,7 @@ namespace MissionPlanner.Controls
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30F));
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30F));
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tableLayoutPanel1.Size = new System.Drawing.Size(251, 250);
+            this.tableLayoutPanel1.Size = new System.Drawing.Size(251, 370);
             this.tableLayoutPanel1.TabIndex = 9;
             // 
             // label1
@@ -347,19 +366,103 @@ namespace MissionPlanner.Controls
             this.TXT_gaugeMax.TextChanged += new System.EventHandler(this.TXT_gaugeMax_TextChanged);
             this.TXT_gaugeMax.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.TXT_scale_offset_KeyPress);
             //
+            // CHK_colorCode
+            //
+            this.CHK_colorCode.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            this.CHK_colorCode.AutoSize = true;
+            this.CHK_colorCode.Name = "CHK_colorCode";
+            this.CHK_colorCode.Size = new System.Drawing.Size(80, 17);
+            this.CHK_colorCode.TabIndex = 24;
+            this.CHK_colorCode.Text = "Color-code";
+            this.toolTip1.SetToolTip(this.CHK_colorCode, "Color the value Red/Yellow/Green based on threshold values below.\r\nThe displayed color is the one whose threshold is the highest still <= value.");
+            this.CHK_colorCode.UseVisualStyleBackColor = true;
+            this.CHK_colorCode.CheckedChanged += new System.EventHandler(this.CHK_colorCode_CheckedChanged);
+            //
+            // LBL_redValue
+            //
+            this.LBL_redValue.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            this.LBL_redValue.AutoSize = true;
+            this.LBL_redValue.Name = "LBL_redValue";
+            this.LBL_redValue.Size = new System.Drawing.Size(27, 13);
+            this.LBL_redValue.TabIndex = 25;
+            this.LBL_redValue.Text = "Red";
+            this.LBL_redValue.ForeColor = System.Drawing.Color.Red;
+            this.toolTip1.SetToolTip(this.LBL_redValue, "Value at which the display turns red");
+            //
+            // TXT_redValue
+            //
+            this.TXT_redValue.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
+            this.TXT_redValue.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.TXT_redValue.Name = "TXT_redValue";
+            this.TXT_redValue.Size = new System.Drawing.Size(118, 13);
+            this.TXT_redValue.TabIndex = 26;
+            this.TXT_redValue.Text = "0";
+            this.TXT_redValue.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
+            this.toolTip1.SetToolTip(this.TXT_redValue, "Value at which the display turns red");
+            this.TXT_redValue.TextChanged += new System.EventHandler(this.TXT_colorValue_TextChanged);
+            this.TXT_redValue.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.TXT_scale_offset_KeyPress);
+            //
+            // LBL_yellowValue
+            //
+            this.LBL_yellowValue.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            this.LBL_yellowValue.AutoSize = true;
+            this.LBL_yellowValue.Name = "LBL_yellowValue";
+            this.LBL_yellowValue.Size = new System.Drawing.Size(36, 13);
+            this.LBL_yellowValue.TabIndex = 27;
+            this.LBL_yellowValue.Text = "Yellow";
+            this.LBL_yellowValue.ForeColor = System.Drawing.Color.Goldenrod;
+            this.toolTip1.SetToolTip(this.LBL_yellowValue, "Value at which the display turns yellow");
+            //
+            // TXT_yellowValue
+            //
+            this.TXT_yellowValue.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
+            this.TXT_yellowValue.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.TXT_yellowValue.Name = "TXT_yellowValue";
+            this.TXT_yellowValue.Size = new System.Drawing.Size(118, 13);
+            this.TXT_yellowValue.TabIndex = 28;
+            this.TXT_yellowValue.Text = "50";
+            this.TXT_yellowValue.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
+            this.toolTip1.SetToolTip(this.TXT_yellowValue, "Value at which the display turns yellow");
+            this.TXT_yellowValue.TextChanged += new System.EventHandler(this.TXT_colorValue_TextChanged);
+            this.TXT_yellowValue.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.TXT_scale_offset_KeyPress);
+            //
+            // LBL_greenValue
+            //
+            this.LBL_greenValue.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            this.LBL_greenValue.AutoSize = true;
+            this.LBL_greenValue.Name = "LBL_greenValue";
+            this.LBL_greenValue.Size = new System.Drawing.Size(36, 13);
+            this.LBL_greenValue.TabIndex = 29;
+            this.LBL_greenValue.Text = "Green";
+            this.LBL_greenValue.ForeColor = System.Drawing.Color.Green;
+            this.toolTip1.SetToolTip(this.LBL_greenValue, "Value at which the display turns green");
+            //
+            // TXT_greenValue
+            //
+            this.TXT_greenValue.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
+            this.TXT_greenValue.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.TXT_greenValue.Name = "TXT_greenValue";
+            this.TXT_greenValue.Size = new System.Drawing.Size(118, 13);
+            this.TXT_greenValue.TabIndex = 30;
+            this.TXT_greenValue.Text = "100";
+            this.TXT_greenValue.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
+            this.toolTip1.SetToolTip(this.TXT_greenValue, "Value at which the display turns green");
+            this.TXT_greenValue.TextChanged += new System.EventHandler(this.TXT_colorValue_TextChanged);
+            this.TXT_greenValue.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.TXT_scale_offset_KeyPress);
+            //
             // QuickViewOptions
-            // 
+            //
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(281, 355);
+            this.ClientSize = new System.Drawing.Size(281, 475);
             this.Controls.Add(this.groupBox1);
             this.Controls.Add(this.LBL_precision);
             this.Controls.Add(this.NUM_precision);
             this.Controls.Add(this.CMB_Source);
             this.MaximizeBox = false;
-            this.MaximumSize = new System.Drawing.Size(5000, 395);
+            this.MaximumSize = new System.Drawing.Size(5000, 515);
             this.MinimizeBox = false;
-            this.MinimumSize = new System.Drawing.Size(16, 395);
+            this.MinimumSize = new System.Drawing.Size(16, 515);
             this.Name = "QuickViewOptions";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "Edit Item";
@@ -397,5 +500,12 @@ namespace MissionPlanner.Controls
         private System.Windows.Forms.Label label4;
         private System.Windows.Forms.TextBox TXT_gaugeMin;
         private System.Windows.Forms.TextBox TXT_gaugeMax;
+        private System.Windows.Forms.CheckBox CHK_colorCode;
+        private System.Windows.Forms.Label LBL_redValue;
+        private System.Windows.Forms.Label LBL_yellowValue;
+        private System.Windows.Forms.Label LBL_greenValue;
+        private System.Windows.Forms.TextBox TXT_redValue;
+        private System.Windows.Forms.TextBox TXT_yellowValue;
+        private System.Windows.Forms.TextBox TXT_greenValue;
     }
 }

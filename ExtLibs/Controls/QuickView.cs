@@ -47,6 +47,14 @@ namespace MissionPlanner.Controls
         public double gaugeMin = 0;
         public double gaugeMax = 100;
 
+        // Color-coding properties: value text turns Red/Yellow/Green based on thresholds.
+        // The displayed color is the one whose threshold is the highest threshold still <= value.
+        // If value is below all thresholds, the color with the lowest threshold is used.
+        public bool isColorCoded = false;
+        public double colorRedValue = 0;
+        public double colorYellowValue = 50;
+        public double colorGreenValue = 100;
+
         // Blink state for out-of-range values
         private Timer _blinkTimer;
         private bool _blinkVisible = true;
@@ -176,15 +184,17 @@ namespace MissionPlanner.Controls
                 numb = scaled_number.ToString(numberformat);
             }
 
+            Color effectiveColor = GetEffectiveColor(scaled_number);
+
             if (isGauge)
             {
                 // Draw gauge mode (180-degree half circle)
-                DrawGauge(canvas, e, contentAreaTop, contentAreaHeight, scaled_number, numb);
+                DrawGauge(canvas, e, contentAreaTop, contentAreaHeight, scaled_number, numb, effectiveColor);
             }
             else
             {
                 // Draw number mode (original behavior)
-                DrawNumber(e, contentAreaTop, contentAreaHeight, numb);
+                DrawNumber(e, contentAreaTop, contentAreaHeight, numb, effectiveColor);
             }
 
             if (!_isConnected)
@@ -193,7 +203,30 @@ namespace MissionPlanner.Controls
             }
         }
 
-        private void DrawNumber(SkiaGraphics e, int numberAreaTop, int numberAreaHeight, string numb)
+        private Color GetEffectiveColor(double scaledNumber)
+        {
+            if (!isColorCoded)
+                return numberColor;
+
+            var thresholds = new (double value, Color color)[]
+            {
+                (colorRedValue, Color.Red),
+                (colorYellowValue, Color.Gold),
+                (colorGreenValue, Color.LimeGreen)
+            };
+
+            Array.Sort(thresholds, (a, b) => a.value.CompareTo(b.value));
+
+            Color result = thresholds[0].color;
+            foreach (var t in thresholds)
+            {
+                if (scaledNumber >= t.value)
+                    result = t.color;
+            }
+            return result;
+        }
+
+        private void DrawNumber(SkiaGraphics e, int numberAreaTop, int numberAreaHeight, string numb, Color drawColor)
         {
             // Use a reference string for consistent sizing (prevents jumping when digits change)
             string refString = "0".PadLeft(Math.Max(numb.Length + 1, 5), '0');
@@ -233,11 +266,11 @@ namespace MissionPlanner.Controls
                 float x = this.Width / 2 - extent.Width / 2;
                 float y = numberAreaTop + (numberAreaHeight / 2 - extent.Height / 2);
 
-                e.DrawString(numb, numberFont, new SolidBrush(this.numberColor), x, y);
+                e.DrawString(numb, numberFont, new SolidBrush(drawColor), x, y);
             }
         }
 
-        private void DrawGauge(SkiaSharp.SKCanvas canvas, SkiaGraphics e, int contentAreaTop, int contentAreaHeight, double value, string formattedValue)
+        private void DrawGauge(SkiaSharp.SKCanvas canvas, SkiaGraphics e, int contentAreaTop, int contentAreaHeight, double value, string formattedValue, Color drawColor)
         {
             // Check if value is out of range and manage blink timer
             bool outOfRange = value < gaugeMin || value > gaugeMax;
@@ -317,7 +350,7 @@ namespace MissionPlanner.Controls
             {
                 valuePaint.Style = SkiaSharp.SKPaintStyle.Stroke;
                 valuePaint.StrokeWidth = arcStrokeWidth;
-                valuePaint.Color = new SkiaSharp.SKColor(numberColor.R, numberColor.G, numberColor.B);
+                valuePaint.Color = new SkiaSharp.SKColor(drawColor.R, drawColor.G, drawColor.B);
                 valuePaint.IsAntialias = true;
                 valuePaint.StrokeCap = SkiaSharp.SKStrokeCap.Round;
 
@@ -387,7 +420,7 @@ namespace MissionPlanner.Controls
 
             if (!_isConnected || _blinkVisible)
             {
-                e.DrawString(formattedValue, valueFont, new SolidBrush(this.numberColor), x, y);
+                e.DrawString(formattedValue, valueFont, new SolidBrush(drawColor), x, y);
             }
         }
 

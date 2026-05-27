@@ -1009,6 +1009,19 @@ namespace MissionPlanner.GCSViews
                     double gaugeMin = double.Parse(parts[9]);
                     double gaugeMax = double.Parse(parts[10]);
 
+                    // Optional color-coding fields (older configs won't have these)
+                    bool isColorCoded = false;
+                    double colorRedValue = 0;
+                    double colorYellowValue = 50;
+                    double colorGreenValue = 100;
+                    if (parts.Length >= 15)
+                    {
+                        isColorCoded = parts[11] == "1";
+                        double.TryParse(parts[12], out colorRedValue);
+                        double.TryParse(parts[13], out colorYellowValue);
+                        double.TryParse(parts[14], out colorGreenValue);
+                    }
+
                     // Find the control at this position
                     var ctrl = tableLayoutPanelQuick.GetControlFromPosition(col, row);
                     if (ctrl is QuickView qv)
@@ -1036,6 +1049,10 @@ namespace MissionPlanner.GCSViews
                         qv.isGauge = isGauge;
                         qv.gaugeMin = gaugeMin;
                         qv.gaugeMax = gaugeMax;
+                        qv.isColorCoded = isColorCoded;
+                        qv.colorRedValue = colorRedValue;
+                        qv.colorYellowValue = colorYellowValue;
+                        qv.colorGreenValue = colorGreenValue;
 
                         qv.DataBindings.Clear();
                         BindQuickView(qv);
@@ -6095,7 +6112,7 @@ namespace MissionPlanner.GCSViews
             }
 
             // Save each QuickView as a single setting with all properties
-            // Format: row|col|source|label|color|format|scale|offset|isGauge|gaugeMin|gaugeMax
+            // Format: row|col|source|label|color|format|scale|offset|isGauge|gaugeMin|gaugeMax|isColorCoded|redValue|yellowValue|greenValue
             int itemIndex = 0;
             foreach (Control ctrl in tableLayoutPanelQuick.Controls)
             {
@@ -6116,7 +6133,11 @@ namespace MissionPlanner.GCSViews
                         qv.offset.ToString(),
                         qv.isGauge ? "1" : "0",
                         qv.gaugeMin.ToString(),
-                        qv.gaugeMax.ToString()
+                        qv.gaugeMax.ToString(),
+                        qv.isColorCoded ? "1" : "0",
+                        qv.colorRedValue.ToString(),
+                        qv.colorYellowValue.ToString(),
+                        qv.colorGreenValue.ToString()
                     };
 
                     // Use pipe as delimiter since it's unlikely to appear in values

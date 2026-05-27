@@ -142,8 +142,25 @@ namespace MissionPlanner.Controls
             label3.Enabled = CHK_gauge.Checked;
             label4.Enabled = CHK_gauge.Checked;
 
+            // Initialize color-coding settings - set text values BEFORE checkbox
+            TXT_redValue.Text = _qv.colorRedValue.ToString("0.#######");
+            TXT_yellowValue.Text = _qv.colorYellowValue.ToString("0.#######");
+            TXT_greenValue.Text = _qv.colorGreenValue.ToString("0.#######");
+            CHK_colorCode.Checked = _qv.isColorCoded;
+            SetColorCodeFieldsEnabled(CHK_colorCode.Checked);
+
             // Done initializing - now event handlers can save settings
             _initializing = false;
+        }
+
+        private void SetColorCodeFieldsEnabled(bool enabled)
+        {
+            TXT_redValue.Enabled = enabled;
+            TXT_yellowValue.Enabled = enabled;
+            TXT_greenValue.Enabled = enabled;
+            LBL_redValue.Enabled = enabled;
+            LBL_yellowValue.Enabled = enabled;
+            LBL_greenValue.Enabled = enabled;
         }
 
         private void NUM_precision_ValueChanged(object sender, EventArgs e)
@@ -315,6 +332,27 @@ namespace MissionPlanner.Controls
             }
         }
 
+        private void CHK_colorCode_CheckedChanged(object sender, EventArgs e)
+        {
+            SetColorCodeFieldsEnabled(CHK_colorCode.Checked);
+        }
+
+        private void TXT_colorValue_TextChanged(object sender, EventArgs e)
+        {
+            var tb = sender as TextBox;
+            if (tb == null) return;
+
+            // Validate input - show red if invalid
+            if (!double.TryParse(tb.Text, out _))
+            {
+                tb.BackColor = Color.Red;
+            }
+            else
+            {
+                tb.BackColor = backup_backcolor;
+            }
+        }
+
         // Runs when the user types in the box, but not when the text is changed programatically
         private void CMB_Source_TextUpdate(object sender, EventArgs e)
         {
@@ -408,6 +446,24 @@ namespace MissionPlanner.Controls
                     _qv.gaugeMax = gaugeMax;
                 else
                     _qv.gaugeMax = 100;
+
+                // Apply color-coding settings from form
+                _qv.isColorCoded = CHK_colorCode.Checked;
+
+                if (double.TryParse(TXT_redValue.Text, out double redValue))
+                    _qv.colorRedValue = redValue;
+                else
+                    _qv.colorRedValue = 0;
+
+                if (double.TryParse(TXT_yellowValue.Text, out double yellowValue))
+                    _qv.colorYellowValue = yellowValue;
+                else
+                    _qv.colorYellowValue = 50;
+
+                if (double.TryParse(TXT_greenValue.Text, out double greenValue))
+                    _qv.colorGreenValue = greenValue;
+                else
+                    _qv.colorGreenValue = 100;
 
                 // Update the data source if changed
                 if (CMB_Source.SelectedItem is Tuple<string, string> selectedField)
